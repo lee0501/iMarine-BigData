@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>航港大數據－空櫃失衡辨識與跨港媒合決策機制</title>
+    <style>
+        :root {
+            --primary-navy: #0f172a;
+            --accent-cyan: #0ea5e9;
+            --text-main: #334155;
+            --text-bold: #1e293b;
+            --bg-soft: #f8fafc;
+            --border-color: #e2e8f0;
+            --highlight: #fef08a;
+        }
+
+        /* 基礎設定 */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: "Inter", "PingFang TC", "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-soft);
+            color: var(--text-main);
+            line-height: 1.8;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- 強化版 Header --- */
+        .page-header {
+            background: var(--primary-navy);
+            color: white;
+            padding: 80px 20px;
+            text-align: center;
+            
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 320px;
+        }
+
+        .page-header h2 {
+            font-size: clamp(1.8rem, 5vw, 2.6rem);
+            font-weight: 800;
+            max-width: 900px;
+            line-height: 1.3;
+            margin: 0;
+            letter-spacing: -0.02em;
+            color: white;
+        }
+
+        .page-header .meta-info {
+            margin-top: 1.5rem;
+            font-size: 1rem;
+            opacity: 0.7;
+            font-weight: 400;
+        }
+
+        /* --- 版面 --- */
+        .layout {
+            display: flex;
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .side-nav {
+            position: sticky;
+            top: 2rem;
+            align-self: flex-start;
+            width: 220px;
+            height: fit-content;
+        }
+
+        .nav-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1.1rem 1rem;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.06);
+        }
+
+        .nav-card + .nav-card {
+            margin-top: 1rem;
+        }
+
+        .side-nav h3,
+        .side-nav h4 {
+            font-size: 1rem;
+            margin: 0 0 0.8rem 0;
+            color: var(--text-bold);
+            border: 0;
+            padding: 0;
+        }
+
+        .side-nav ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+
+        .side-nav li {
+            margin-bottom: 0.6rem;
+        }
+
+        .side-nav a {
+            text-decoration: none;
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .side-nav a:hover {
+            color: var(--accent-cyan);
+        }
+
+        .nav-toggle {
+            display: none;
+        }
+
+        .nav-toggle-label {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.5rem 0.7rem;
+            font-weight: 600;
+            color: var(--text-bold);
+            background: #f8fafc;
+            cursor: pointer;
+        }
+
+        .nav-toggle-label::after {
+            content: "☰";
+            font-size: 1rem;
+        }
+
+        .nav-links {
+            margin-top: 0.6rem;
+        }
+
+        .nav-overlay {
+            display: none;
+            cursor: pointer;
+        }
+
+        .nav-updates ul {
+            padding-left: 1.1rem;
+            list-style: disc;
+        }
+
+        .nav-updates li:nth-child(n + 4) {
+            display: none;
+        }
+
+        /* --- 內容容器 --- */
+        .content-wrapper {
+            flex: 1;
+            background: white;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            padding: 4rem 2rem;
+            min-height: 100vh;
+        }
+
+        /* --- Markdown 元素逐字樣式 --- */
+        h1, h2, h3, h4 {
+            color: var(--primary-navy);
+            margin-top: 3rem;
+            margin-bottom: 1.2rem;
+            font-weight: 700;
+        }
+
+        /* 二級標題作為主要章節分隔 */
+        h2 {
+            font-size: 1.6rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 4rem;
+        }
+
+        /* 三級標題樣式 */
+        h3 {
+            font-size: 1.3rem;
+            color: var(--secondary-blue);
+            padding-left: 12px;
+            border-left: 5px solid var(--accent-cyan);
+        }
+
+        h4 {
+            font-size: 1.1rem;
+            margin-top: 2rem;
+            color: var(--text-bold);
+        }
+
+        p { margin-bottom: 1.2rem; }
+        
+        ul, ol { margin-bottom: 1.5rem; padding-left: 1.5rem; }
+        li { margin-bottom: 0.6rem; }
+        
+        strong { color: var(--text-bold); font-weight: 700; }
+        mark { background-color: var(--highlight); padding: 0 4px; border-radius: 2px; }
+
+        /* 引用區塊 */
+        blockquote {
+            border-left: 4px solid var(--accent-cyan);
+            padding: 1.2rem 1.8rem;
+            margin: 2rem 0;
+            background: #f1f5f9;
+            color: #475569;
+            border-radius: 0 4px 4px 0;
+        }
+
+        /* 程式碼與公式 */
+        code {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            background: #f1f5f9;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.95em;
+            color: #e11d48; /* 深粉紅突出 */
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: white;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 0.85rem 1rem;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f8fafc;
+            color: var(--text-bold);
+            font-weight: 700;
+        }
+
+        hr { border: 0; border-top: 1px solid var(--border-color); margin: 3.5rem 0; }
+
+        /* RWD 調整 */
+        @media (max-width: 1024px) {
+            .layout { flex-direction: column; }
+            .side-nav { width: 100%; position: static; }
+            .nav-card-menu {
+                background: transparent;
+                border: 0;
+                box-shadow: none;
+                padding: 0;
+            }
+            .nav-toggle-label {
+                display: flex;
+                position: fixed;
+                right: 1rem;
+                bottom: 1rem;
+                width: 46px;
+                height: 46px;
+                padding: 0;
+                border-radius: 10px;
+                font-size: 0;
+                justify-content: center;
+                z-index: 1000;
+                box-shadow: 0 10px 20px rgba(15, 23, 42, 0.2);
+            }
+            .nav-toggle-label::after {
+                font-size: 1.2rem;
+            }
+            .nav-links { display: none; }
+            .nav-links {
+                position: fixed;
+                right: 1rem;
+                bottom: 4.2rem;
+                width: min(80vw, 320px);
+                max-height: 70vh;
+                overflow: auto;
+                background: white;
+                border: 1px solid var(--border-color);
+                border-radius: 12px;
+                padding: 1rem;
+                z-index: 1001;
+                box-shadow: 0 16px 28px rgba(15, 23, 42, 0.2);
+            }
+            .nav-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.4);
+                z-index: 900;
+            }
+            .nav-toggle:checked + .nav-toggle-label + .nav-overlay { display: block; }
+            .nav-toggle:checked + .nav-toggle-label + .nav-overlay + .nav-links { display: block; }
+        }
+
+        @media (max-width: 768px) {
+            .page-header { padding: 60px 20px; min-height: 250px; }
+            .content-wrapper { padding: 2rem 1.2rem; }
+            h2 { font-size: 1.4rem; }
+            h3 { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="page-header">
+
+    <h2>第六屆航港大數據競賽<br>
+        空櫃失衡辨識與跨港媒合決策機制</h2>
+</header>
+
+<div class="layout">
+    <nav class="side-nav">
+        <div class="nav-card nav-card-menu">
+            <input class="nav-toggle" type="checkbox" id="nav-toggle">
+            <label class="nav-toggle-label" for="nav-toggle">章節導航</label>
+            <label class="nav-overlay" for="nav-toggle" aria-label="關閉章節導航"></label>
+            <div class="nav-links">
+                <h3>章節導航</h3>
+                <ul>
+                    <li><a href="#section-0">零、背景動機</a></li>
+                    <li><a href="#section-1">一、研究動機</a></li>
+                    <li><a href="#section-2">二、研究核心問題</a></li>
+                    <li><a href="#section-3">三、研究邏輯與整體架構</a></li>
+                    <li><a href="#section-4">四、資料來源與資料用途</a></li>
+                    <li><a href="#section-5">五、研究方法</a></li>
+                    <li><a href="#section-6">六、預期輸出</a></li>
+                    <li><a href="#section-7">七、預期呈現模式（視覺化與系統呈現）</a></li>
+                    <li><a href="#section-8">八、預期價值</a></li>
+                    <li><a href="#section-9">九、待確認與待補強內容</a></li>
+                    <li><a href="#section-10">十、資料庫連結與欄位對照表</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="nav-card nav-updates">
+            <h5>更新紀錄</h5>
+            <ul><h5>
+                <li>2026-03-23：<br>更動完整架構、補充資料處理跟視覺化呈現資訊</li>
+                <li>2026-03-23：<br>新增「零、背景動機」</li>
+                <li>2026-03-22：<br>新增側邊導航與章節錨點</li>
+            </h5></ul>
+        </div>
+    </nav>
+
+    <main class="content-wrapper">
+        <h2 id="section-0">零、背景動機</h2>
+        <h4>（一）相關報導與現象</h4>
+        <ol>
+            <li><strong><a href="https://www.motc.gov.tw/ch/app/data/view?module=news&id=14&serno=c369c068-11ff-4ab1-810f-a657a4d71c15">《藍色公路獎勵政策》推動空櫃海運調度</a></strong><br>自民國102年起，政府持續推動「藍色公路獎勵」，鼓勵業者以海運取代陸運進行空櫃調度，作為減碳與運輸優化措施。至113年（2024年），透過該政策促成之貨櫃裝卸量已達130萬 TEU，顯示政府已積極介入空櫃調度問題，並試圖透過誘因機制改變運輸行為。</li>
+            <li><strong><a href="https://ec.ltn.com.tw/article/breakingnews/5369403">航運公司傾向自行持有或租用貨櫃，降低共享意願</a></strong><br>以長榮海運為例，其以約新台幣15億元租用25,000只貨櫃，租期長達7年，反映出航商在面對空櫃需求不確定性時，傾向透過自行掌控資源來降低風險，而非依賴外部調度或共享機制。</li>
+            <li><strong><a href="https://www.liantat.com.tw/category/海洋聯盟/海事產業/">既有空櫃媒合多為港口互換</a></strong><br>過去曾出現空櫃媒合平台-NCS，其運作方式主要為在同一港口內進行雙邊交換（某公司缺櫃、另一公司多櫃），以達到即時調度。</li>
+            <li><strong><a href="https://www.liantat.com.tw/共享走入海運業-新創助降空櫃調度成本/">國際實務（One Way Use）仍存在責任與風險問題</a></strong><br>國際上亦有「One Way Use」模式，即單次租用空櫃。</li>
+            <li><strong><a href="https://www.motc.gov.tw/ch/app/data/view?module=news&id=14&serno=450faec4-af62-484c-92ee-b9edddf0163d">第七貨櫃中心全面落成/營運，智慧高港翻轉無限可能</a></strong><br>港口轉型推高整體港口競爭力及全球貨櫃港吞吐量，維持高雄港亞太地區貨櫃轉運樞紐地位</li>
+        </ol>
+        <h4>（二）產業背景說明</h4>
+        <p>在全球與區域航運體系中，空櫃失衡（empty container imbalance）為長期存在之營運現象，其主要特徵並非空櫃總量不足，而是空櫃在不同港口與區域之間的分布不均。此種不均衡會使部分港口出現空櫃累積、堆場壓力上升，而其他港口則可能處於相對低壓或空櫃供給不足的狀態。</p>
+        <p>以台灣港口體系為例，南北港口之間在不同時期可能出現空櫃配置差異，實務上常透過陸運進行調度，形成「南櫃北運」或「北櫃南運」的情形。此類調度方式雖可短期平衡供需，但同時也伴隨運輸成本增加、交通負荷與環境外部性等問題。</p>
+        <p>此外，空櫃管理在實務上涉及多方角色（航運公司、港務單位、物流業者），且貨櫃調度決策往往與船期安排、艙位利用及營運策略相互影響，使得空櫃流動不易由單一主體進行整體優化配置。在缺乏跨港整體視角與量化依據的情況下，空櫃調度多依賴經驗判斷或臨時協調進行。</p>
+        <p>過去模式（港口互換、單次租賃等等） <strong>多僅解決「當下最優」，缺乏跨港、跨時間的整體視角與配置能力，也未能有效解決航商間對於責任歸屬與風險分擔的疑慮</strong>。</p>
+
+        <h2 id="section-1">一、研究動機</h2>
+        <p>全球與區域航運體系中，空櫃失衡（empty container imbalance）為長期存在之營運問題。其本質並非空櫃總量絕對不足，而是空櫃在不同港口之間配置不均，導致部分港口空櫃持續累積、堆場壓力升高，另一些港口則維持較低壓力狀態。</p>
+        <p>可分為兩個狀態:</p>
+        <p>
+            <b>空櫃不足：</b>
+            出口需求旺盛但空櫃供給不足，導致貨物無法即時裝櫃出運，影響供應鏈效率與港口競爭力（尤其台灣是「出口導向」國家，<b>可以引GDP資料佐證</b>）
+        </p>
+        <p> <b>空櫃過多：</b>
+            空櫃滯留港區，占用堆場與作業空間，降低港口運作效率並增加管理負擔
+        </p>
+        <p>在台灣港口情境下，當某些港口空櫃量過高時，若未能即時外移，將可能造成堆場空間占用、作業效率下降，甚至形成空櫃滯留（死櫃）問題。現行實務多仰賴航商與港務單位以經驗判斷進行協調，較缺乏一套以公開資料為基礎的量化辨識與決策支援方法。</p>
+        <p>因此，本研究擬建立一套以港口壓力釋放為核心之空櫃失衡辨識與跨港媒合決策機制，協助政府與港務公司辨識需釋放空櫃之港口，以及具有承接能力之港口，進而提升空櫃跨港調度效率與決策品質。</p>
+
+        <p><i>
+            <h5>
+                補充-空櫃失衡（empty container imbalance）
+                <br>
+                空櫃在「不同港口之間配置不均」，概念上是**多個港口**都在面對空櫃所導致的過多或過少的狀態，並且缺乏有效的調度*。
+            </h5>
+            <h5>
+                 補充-空櫃管理責任分散
+                 <br>
+                「重櫃運送及空櫃調度則常是分屬不同部門管理，實務上除非櫃務部門提出空櫃運送需求，否則空櫃皆是等到有剩餘艙位才思考是否運送，時常有累積過多貨櫃的情況發生，此情形對於船公司造成浪費」
+                （來源：李際偉、許家瑋：定期航運業艙位分配及空櫃調度之研究  海運學報 第二十卷 第二期 「摘要」）
+            </h5>
+        </p></i>
+
+        <h2 id="section-2">二、研究核心問題</h2>
+        <b>不是主打「預測」（這樣可以避開要用時間模型的做法，去年社會組第一名就是用時間模型的做法），而是主打「資源配置 / 調度問題」</b>
+        <p><br>本研究欲回答以下三個核心問題：</p>
+        <ol>
+            <li>如何利用公開航港資料辨識哪些港口已出現空櫃壓力過高、需優先釋放空櫃？</li>
+            <li>如何辨識哪些港口仍具有空間緩衝與承接能力，可作為空櫃外移之候選承接端？</li>
+            <li>如何建立跨港調度媒合與優先排序機制，提供政府與港務公司作為決策支援依據？</li>
+        </ol>
+
+        <h2 id="section-3">三、研究邏輯與整體架構</h2>
+        <h3>3.1 研究邏輯</h3>
+        <p>本研究不以航商訂單或需求預測作為分析主軸，而採用 <strong>push-based 調度邏輯</strong>。也就是說，研究起點不是「哪個港口需要空櫃」，而是「哪個港口的空櫃已累積到必須外移」。在此邏輯下，研究將依序完成以下任務：</p>
+        <ol>
+            <li><strong>辨識需釋放空櫃之港口</strong>：找出空櫃壓力過高、已接近或超過安全區間的港口。</li>
+            <li><strong>辨識具承接能力之港口</strong>：找出當前空櫃壓力較低、仍有承接緩衝空間的港口。</li>
+            <li><strong>建立跨港候選組合</strong>：將高壓力港與高緩衝港進行配對，形成潛在調度對。</li>
+            <li><strong>進行媒合排序</strong>：依據壓力程度、承接能力與調度阻力等因素，形成調度優先順序。</li>
+            <li><strong>進行視覺化呈現</strong>：將結果整合為儀表板，作為管理與溝通工具。</li>
+        </ol>
+
+        <h3>3.2 系統架構分層</h3>
+        <ul>
+            <li><strong>Layer 1：資料層</strong><br>整合 iMarine、政府資料開放平台及主計總處之港口與貨櫃月別資料。</li>
+            <li><strong>Layer 2：指標建構層</strong><br>將原始資料轉換為可判讀之港口壓力、空櫃流動與承接緩衝指標。</li>
+            <li><strong>Layer 3：分析與分類層</strong><br>判斷各港口目前屬於高壓力港、正常港或高緩衝港。</li>
+            <li><strong>Layer 4：決策支援層</strong><br>建立跨港媒合候選對與排序規則，輸出調度優先建議。</li>
+            <li><strong>Layer 5：視覺化呈現層</strong><br>以圖表與互動式介面呈現港口狀態、失衡趨勢與調度建議。</li>
+        </ul>
+
+
+        <h2 id="section-4">四、資料來源與資料用途</h2>
+        <p>本研究以「港口 × 年月」為分析主軸，整合空櫃流動、實櫃活動與港口作業量資料，建立可用於辨識壓力、緩衝與媒合決策的月別主表。本章說明資料在研究中的角色分工；各資料集的實際連結、欄位與轉化方式集中整理於<a href="#section-10">第十章</a>。</p>
+
+        <h3>4.1 核心資料：空櫃流動</h3>
+        <ul>
+            <li><strong>進口空櫃資料</strong>：用來描述空櫃流入港口的規模，是觀察空櫃是否持續堆積的起點。</li>
+            <li><strong>出口空櫃資料</strong>：用來描述空櫃釋放或外移的規模，搭配流入量可計算空櫃淨流量。</li>
+            <li><strong>分析角色</strong>：支撐 <code>empty_in</code>、<code>empty_out</code> 與 <code>empty_net</code> 等核心指標建構。</li>
+        </ul>
+
+        <h3>4.2 輔助資料：實櫃活動</h3>
+        <ul>
+            <li><strong>進口實櫃資料</strong>：補充港口整體進口貨物流動狀況。</li>
+            <li><strong>出口實櫃資料</strong>：反映港口出口活動強度與貨物流規模。</li>
+            <li><strong>分析角色</strong>：作為背景解釋與合理性驗證，不直接作為主決策排序依據。</li>
+        </ul>
+
+        <h3>4.3 壓力基準資料：港口作業量</h3>
+        <ul>
+            <li><strong>貨櫃裝卸量（TEU）</strong>：用來估計各港口的作業規模與負荷程度。</li>
+            <li><strong>分析角色</strong>：作為壓力正規化基準，避免不同規模港口直接以絕對櫃量比較。</li>
+        </ul>
+
+        <h3>4.4 備援與驗證資料</h3>
+        <ul>
+            <li><strong>官方統計資料</strong>：用於交叉驗證資料一致性，並在原始來源缺漏或異常時提供備援。</li>
+            <li><strong>分析角色</strong>：提升月別資料整合後的穩定性與可信度。</li>
+        </ul>
+
+        <h3>4.5 最終整合方向</h3>
+        <p>整體資料將彙整為單一分析表，欄位涵蓋港口、年月、空櫃進出、實櫃進出與港口作業量，供後續進行壓力辨識、港口分類、跨港媒合排序與視覺化呈現。</p>
+
+        <h2 id="section-5">五、研究方法</h2>
+
+        <h3>5.1 資料處理與清洗</h3>
+        <ol>
+            <li><strong>欄位命名統一</strong>：將不同資料表的港口名稱、年月、櫃量欄位標準化。</li>
+            <li><strong>港口名稱標準化</strong>：統一港口命名方式，以免同港異名造成 join 錯誤。</li>
+            <li><strong>年月格式統一</strong>：將年月欄位轉為一致格式，例如 <code>YYYY-MM</code>。</li>
+            <li><strong>單位統一</strong>：統一以 TEU 為分析單位，避免不同統計口徑造成比較偏差。</li>
+            <li><strong>缺失值檢查與處理</strong>：檢查空值、異常值或重複值，視情況採刪除、補值或註記。</li>
+            <li><strong>建立月別主表</strong>：以 <code>港口 × 年月</code> 為主鍵，將各資料表合併。</li>
+        </ol>
+
+        <h3>5.2 指標建構</h3>
+        <h4>（1）空櫃流動構面</h4>
+        <ul>
+            <li>空櫃進港量 </li>
+            <li>空櫃出港量 </li>
+            <li>空櫃淨流量 </li>
+            <li>空櫃累積趨勢</li>
+        </ul>
+        <h4>（2）港口壓力構面</h4>
+        <p>反映空櫃在港口整體作業中造成的壓力程度。重點是「相對於港口作業規模或歷史狀態，是否已偏高」。</p>
+        <h4>（3）承接緩衝構面</h4>
+        <p>衡量港口尚可承接外移空櫃的空間。代表該港在現況下不致因承接而快速進入高壓力狀態。</p>
+
+        <h3>5.3 港口狀態分類</h3>
+        <p>將港口區分為：<strong>高壓力港</strong>、<strong>正常港</strong>、<strong>高緩衝港</strong>。分類方式採相對門檻設計（如歷史分位數、z-score 或相對容量門檻）。</p>
+
+        <h3>5.4 跨港媒合與決策排序</h3>
+        <p>採 <strong>push-based 調度邏輯</strong>，流程如下：</p>
+        <ol>
+            <li>辨識高壓力港（釋放端）。</li>
+            <li>辨識高緩衝港（承接端）。</li>
+            <li>建立跨港候選組合。</li>
+            <li>進行排序（考慮壓力程度、緩衝程度、距離阻力等）。</li>
+        </ol>
+        <p>目標是建立具實務可解釋性之 <strong>調度優先順序清單</strong>。</p>
+
+        <h3>5.5 視覺化與系統呈現</h3>
+        <p>使用 R 語言之 <code>ggplot2</code> 與 <code>Shiny</code> 預期包含：壓力現況圖、失衡趨勢圖、承接能力比較圖、候選調度對應表、優先順序建議表。</p>
+
+        <p>
+            <h5><i>
+                補充：ggplot2＆Shiny基於Ｒ的時間預測模型<br>
+                避開使用機器模型LSTM因為去年大家都用，我們不一定在模型能力上比較優（eg:去年社會組的空櫃預測)
+                <br>
+                <a href="https://ithelp.ithome.com.tw/m/articles/10360722">兩個做法比較文章</a>
+                <ul>
+                    1. ARIMA
+                        <li>未來 = 過去 + 誤差 + 趨勢</li>
+                        <li>好處：小資料好處理、可解釋程度高</li>
+                    2.Prophet（fb開源的，真要用的話選他）
+                    <li>時間 = 趨勢 + 季節性 + 假日效應</li>
+                    <li>好處：商用化、可以回答「下個月哪個港比較可能接近偏多或偏少？」</li>
+                    <li><a href="https://medium.com/datamixcontent-lab/時間序列預測-使用-facebook-prophet-開源套件構建單變量時間序列預測模型-適合初學者閱讀-b27dc783743b">教學參考</a></li>
+                </ul>
+            </i></h5>
+        </p>
+
+        <h2>六、預期輸出</h2>
+        <ul>
+            <li><strong>6.1 港口空櫃壓力現況分析</strong></li>
+            <li><strong>6.2 空櫃失衡趨勢分析</strong></li>
+            <li><strong>6.3 跨港調度候選清單</strong></li>
+            <li><strong>6.4 調度優先順序建議</strong></li>
+            <li><strong>6.5 互動式儀表板</strong></li>
+        </ul>
+
+        <h2 id="section-7">七、預期呈現模式（視覺化與系統呈現）</h2>
+        <p>本研究將分析結果整合為一套以決策支援為導向之互動式儀表板，協助使用者快速掌握港口空櫃狀態與跨港調度建議。視覺化內容將分為四個層次：</p>
+        <h3>7.1 港口空櫃壓力現況（Status Overview）</h3>
+        <p>目的在於快速辨識目前哪些港口處於高壓力狀態。</p>
+        <p><strong>視覺化方式</strong>：</p>
+        <ul>
+            <li>長條圖（Bar Chart）：比較各港口當月空櫃壓力指標</li>
+            <li><strong>顏色標示（Color Encoding）</strong>：
+                紅色：高壓力港（需釋放）；
+                灰色：正常港；
+                綠色：高緩衝港（可承接）</li>
+        </ul>
+        <p><strong>呈現內容</strong>：</p>
+        <ul>
+            <li>各港口空櫃壓力排名</li>
+            <li>高壓力港清單</li>
+            <li>高緩衝港清單</li>
+        </ul>
+        <h3>7.2 空櫃失衡趨勢分析（Trend Analysis）</h3>
+        <p>目的在於觀察各港口空櫃是否存在「持續累積」或「持續流失」現象。</p>
+        <p><strong>視覺化方式</strong>：</p>
+        <ul>
+            <li>折線圖（Line Chart）：呈現各港口空櫃淨流量（Empty In - Empty Out）隨時間變化</li>
+            <li>累積曲線（Cumulative Curve）：觀察長期堆積或流失趨勢</li>
+        </ul>
+        <p><strong>呈現內容</strong>：</p>
+        <ul>
+            <li>哪些港口長期為正（累積風險）</li>
+            <li>哪些港口長期為負（流失狀態）</li>
+            <li>是否存在季節性波動</li>
+        </ul>
+        <h3>7.3 承接能力分析（Absorption Capacity）</h3>
+        <p>目的在於辨識哪些港口具有承接外移空櫃之潛力。</p>
+        <p><strong>視覺化方式</strong>：</p>
+        <ul>
+            <li>散佈圖（Scatter Plot）：X 軸為港口壓力指標，Y 軸為承接緩衝指標（Buffer Index）</li>
+        </ul>
+        <p><strong>呈現內容</strong>：</p>
+        <ul>
+            <li>右上角：高壓力港（需釋放）</li>
+            <li>左上角：低壓力＋高緩衝港（最佳承接端）</li>
+            <li>視覺上直接區分「可承接區域」</li>
+        </ul>
+        <h3>7.4 跨港調度媒合建議（Matching &amp; Recommendation）</h3>
+        <p>目的在於提供具體可執行之調度建議。</p>
+        <p><strong>視覺化方式</strong>：</p>
+        <ul>
+            <li>網絡圖（Network Graph）：節點為港口，邊為建議調度方向（例如 高雄 → 台中）</li>
+            <li>表格（Ranking Table）：呈現調度來源港、承接港、媒合分數（Score）與優先順序</li>
+        </ul>
+        <p><strong>呈現內容</strong>：</p>
+        <ul>
+            <li>Top-N 調度建議</li>
+            <li>每個高壓力港對應之候選承接港</li>
+            <li>調度優先順序</li>
+        </ul>
+        <h3>7.5 情境模擬（Simulation）（選配加分）</h3>
+        <p>目的在於讓使用者理解「若不調度」與「調度後」的差異。</p>
+        <p><strong>視覺化方式</strong>：</p>
+        <ul>
+            <li>Before / After 比較圖</li>
+            <li>滑動控制（Slider）模擬不同調度量</li>
+        </ul>
+        <p><strong>呈現內容</strong>：</p>
+        <ul>
+            <li>若不調度 → 壓力持續上升</li>
+            <li>若調度 → 壓力下降幅度</li>
+            <li>各港口壓力變化比較</li>
+        </ul>
+        <h3>7.6 系統實作工具</h3>
+        <ul>
+            <li>資料分析：R（dplyr, tidyr）</li>
+            <li>視覺化：ggplot2</li>
+            <li>互動系統：Shiny</li>
+        </ul>
+        <p>本儀表板將作為一套「可操作的決策支援工具」，而非僅靜態圖表展示。</p>
+
+        <h2 id="section-8">八、預期價值</h2>
+        <h3>8.1 政策價值</h3>
+        <p>本研究可協助政府與港務公司以量化方式辨識港口空櫃壓力，提升跨港調度之預警與協調能力。</p>
+        <h3>8.2 營運價值</h3>
+        <p>本研究可協助辨識空櫃累積風險，降低港口因空櫃滯留所造成之堆場壓力與作業效率損失。</p>
+        <h3>8.3 決策價值</h3>
+        <p>本研究將原先偏經驗導向之空櫃調度判斷，轉化為可視化、可比較、可排序之資料驅動決策流程。</p>
+        <h3>8.4 研究價值</h3>
+        <p>本研究嘗試將空櫃不平衡問題轉化為以公開資料支撐之 proxy-based decision model，作為航港資料分析與決策支援之應用案例。</p>
+
+        <h2 id="section-9">九、待確認與待補強內容</h2>
+        <h3>9.1 指標公式</h3>
+        <p>目前仍需進一步確認空櫃壓力指標、承接緩衝指標與跨港媒合分數之具體公式形式。</p>
+        <h3>9.2 分類門檻</h3>
+        <p>仍需進一步決定高壓力港與高緩衝港之判定方式，例如採用歷史分位數、z-score 或相對容量門檻。</p>
+        <h3>9.3 區域／距離權重設計</h3>
+        <p>仍需釐清港口之間的區域關係與權重設定方式，以利後續媒合排序。</p>
+        <h3>9.4 視覺化邏輯</h3>
+        <p>仍需進一步規劃儀表板頁面架構、圖表形式與互動流程。</p>
+        <h3>9.5 延伸方向</h3>
+        <p>未來可進一步導入 Prophet 等時間序列方法，作為月別風險預警之延伸模組，但本研究主體仍以跨港調度決策支援為核心。</p>
+
+        <h2 id="section-10">十、資料庫連結與欄位對照表</h2>
+        <p>本研究使用之資料主要來自 iMarine 航港資料庫、政府資料開放平台與主計總處統計資料。以下說明各資料集之用途、關鍵欄位與轉化邏輯。</p>
+        <hr>
+
+        <h3>10.1 空櫃流動資料（核心資料）</h3>
+        <h4>資料集：臺灣進口貨空櫃</h4>
+        <p><strong>來源</strong>：<a href="https://data.gov.tw/dataset/171741">https://data.gov.tw/dataset/171741</a></p>
+        <p><strong>主要欄位</strong>：</p>
+        <ul>
+            <li>年月</li>
+            <li>臺灣港</li>
+            <li>20呎標準貨櫃</li>
+        </ul>
+        <p><strong>用途</strong>：</p>
+        <ul>
+            <li>建立空櫃流入量（Empty_In）</li>
+        </ul>
+        <p><strong>轉化邏輯</strong>：</p>
+        <ul>
+            <li>依港口與年月聚合</li>
+            <li>作為空櫃累積分析的輸入端</li>
+        </ul>
+        
+
+        <h4>資料集：臺灣出口貨空櫃</h4>
+        <p><strong>來源</strong>：<a href="https://data.gov.tw/dataset/171743">https://data.gov.tw/dataset/171743</a></p>
+        <p><strong>主要欄位</strong>：</p>
+        <ul>
+            <li>年月</li>
+            <li>臺灣港</li>
+            <li>20呎標準貨櫃</li>
+        </ul>
+        <p><strong>用途</strong>：</p>
+        <ul>
+            <li>建立空櫃流出量（Empty_Out）</li>
+        </ul>
+        <p><strong>轉化邏輯</strong>：</p>
+        <ul>
+            <li>與進口空櫃資料合併</li>
+            <li>計算空櫃淨流量（Empty_Net = In - Out）</li>
+        </ul>
+    
+
+        <h3>10.2 實櫃資料（輔助資料）</h3>
+        <h4>資料集：臺灣出口貨實櫃</h4>
+        <p><strong>來源</strong>：<a href="https://data.gov.tw/dataset/171742">https://data.gov.tw/dataset/171742</a></p>
+        <p><strong>主要欄位</strong>：</p>
+        <ul>
+            <li>年月</li>
+            <li>臺灣港</li>
+            <li>20呎標準貨櫃</li>
+        </ul>
+        <p><strong>用途</strong>：</p>
+        <ul>
+            <li>描述港口出口活動規模</li>
+            <li>作為背景分析與合理性驗證</li>
+        </ul>
+        
+
+        <h4>資料集：臺灣進口貨實櫃</h4>
+        <p><strong>來源</strong>：<a href="https://data.gov.tw/dataset/171298">https://data.gov.tw/dataset/171298</a></p>
+        <p><strong>主要欄位</strong>：</p>
+        <ul>
+            <li>年月</li>
+            <li>臺灣港</li>
+            <li>20呎標準貨櫃</li>
+        </ul>
+        <p><strong>用途</strong>：</p>
+        <ul>
+            <li>描述港口進口貨物流動</li>
+            <li>補充港口整體貨運結構</li>
+        </ul>
+        
+
+        <h3>10.3 港口作業量資料（壓力基準）</h3>
+        <h4>資料集：國際商港貨櫃裝卸量（TEU）</h4>
+        <p><strong>來源</strong>：iMarine / data.gov.tw（依實際資料頁）</p>
+        <p><strong>主要欄位</strong>：</p>
+        <ul>
+            <li>年月</li>
+            <li>港口名稱</li>
+            <li>貨櫃裝卸量（TEU）</li>
+        </ul>
+        <p><strong>用途</strong>：</p>
+        <ul>
+            <li>建立港口整體作業規模（Throughput）</li>
+        </ul>
+        <p><strong>轉化邏輯</strong>：</p>
+        <ul>
+            <li>作為空櫃壓力正規化基準</li>
+            <li>同樣空櫃量在不同港口具有不同壓力意義</li>
+        </ul>
+    
+
+        <h3>10.4 官方統計備援資料</h3>
+        <h4>資料集：各國際商港貨櫃裝卸量（EXCEL）</h4>
+        <p><strong>來源</strong>：<a href="https://www.stat.gov.tw/">https://www.stat.gov.tw/</a></p>
+        <p><strong>用途</strong>：</p>
+        <ul>
+            <li>與 iMarine 資料交叉驗證</li>
+            <li>補足缺失或異常資料</li>
+        </ul>
+    
+
+        <h3>10.5 資料整合結構（最終分析表）</h3>
+        <p>所有資料將整合為以下結構：</p>
+        <p><strong>欄位</strong>：</p>
+        <ul>
+            <li>port（港口）</li>
+            <li>ym（年月）</li>
+            <li>empty_in（空櫃進港）</li>
+            <li>empty_out（空櫃出港）</li>
+            <li>empty_net（淨流量）</li>
+            <li>full_in（實櫃進口）</li>
+            <li>full_out（實櫃出口）</li>
+            <li>throughput（港口作業量）</li>
+        </ul>
+    
+        <h3>10.6 衍生指標（供模型使用）</h3>
+        <ol>
+            <li>空櫃淨流量<br><code>empty_net = empty_in - empty_out</code></li>
+            <li>空櫃壓力指標<br>以空櫃量與港口作業量進行正規化</li>
+            <li>承接緩衝指標<br><code>buffer = 1 - pressure</code></li>
+        </ol>
+        <p><strong>用途</strong>：</p>
+        <ul>
+            <li>辨識高壓力港（需釋放）</li>
+            <li>辨識高緩衝港（可承接）</li>
+        </ul>
+
+        <h3>10.7 與研究方法之對應關係</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>分析階段</th>
+                    <th>使用資料</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>空櫃流動分析</td>
+                    <td>空櫃進出口資料</td>
+                </tr>
+                <tr>
+                    <td>港口壓力計算</td>
+                    <td>吞吐量資料</td>
+                </tr>
+                <tr>
+                    <td>狀態分類</td>
+                    <td>空櫃 + 吞吐量</td>
+                </tr>
+                <tr>
+                    <td>媒合決策</td>
+                    <td>分類結果 + 區域權重</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>本資料設計確保所有分析皆可由公開資料完成，避免依賴航商內部訂單或不可取得資料。</p>
+
+    </main>
+</div>
+
+<footer>
+    <div style="text-align: center; padding: 3rem 0; color: #94a3b8; font-size: 0.85rem;">
+        航海王會隨時更新！
+    </div>
+</footer>
+
+<script>
+    const navToggle = document.getElementById("nav-toggle");
+    const navLinks = document.querySelectorAll(".nav-links a");
+    const externalLinks = document.querySelectorAll('a[href^="http://"], a[href^="https://"]');
+    const desktopMedia = window.matchMedia("(min-width: 769px)");
+
+    function syncExternalLinkTargets() {
+        externalLinks.forEach((link) => {
+            if (desktopMedia.matches) {
+                link.setAttribute("target", "_blank");
+                link.setAttribute("rel", "noopener noreferrer");
+            } else {
+                link.removeAttribute("target");
+                link.removeAttribute("rel");
+            }
+        });
+    }
+
+    navLinks.forEach((link) => {
+        link.addEventListener("click", () => {
+            if (navToggle) {
+                navToggle.checked = false;
+            }
+        });
+    });
+
+    syncExternalLinkTargets();
+    desktopMedia.addEventListener("change", syncExternalLinkTargets);
+</script>
+
+</body>
+</html>
